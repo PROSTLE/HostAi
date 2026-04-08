@@ -142,8 +142,38 @@ export async function startRuntimeForSite({ siteId, siteDir, backendFile }) {
       env: { ...process.env, PORT: String(port) },
     });
 
+  } else if (ext === '.cpp' || ext === '.c' || ext === '.exe') {
+    // ── C++ / Native Binaries ───────────────────────────────────────────────
+    lang = 'cpp';
+    let exePath = fullEntryPath;
+
+    if (ext === '.cpp' || ext === '.c') {
+      const gccCmd = await findExecutable(['g++']);
+      if (!gccCmd) throw new Error('g++ not found for compiling C++ source.');
+      
+      const outExe = path.join(siteDir, 'server_backend.exe');
+      console.log(`[RUNTIME] Compiling C++ backend: ${safeEntry}`);
+      await new Promise((resolve, reject) => {
+        execFile(gccCmd, [safeEntry, '-o', outExe, '-lws2_32', '-lmswsock', '-ladvapi32'], { cwd: siteDir }, (err, stdout, stderr) => {
+          if (err) {
+            console.error(`[RUNTIME] C++ compilation failed: ${stderr || err.message}`);
+            return reject(new Error('C++ compilation failed:\n' + (stderr || err.message)));
+          }
+          resolve();
+        });
+      });
+      exePath = outExe;
+    }
+
+    console.log(`[RUNTIME] Starting Native backend: ${exePath} on port ${port}`);
+    proc = spawn(exePath, [], {
+      cwd: siteDir,
+      windowsHide: true,
+      env: { ...process.env, PORT: String(port) },
+    });
+
   } else {
-    throw new Error(`Unsupported backend file type: ${ext}. Use .py or .js`);
+    throw new Error(`Unsupported backend file type: ${ext}. Use .py, .js, .cpp, or .exe`);
   }
 
   // Log output
