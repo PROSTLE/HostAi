@@ -49,47 +49,216 @@ const anAvgScore       = $('an-avg-score');
 const anUrlCount       = $('an-url-count');
 const anFileCount      = $('an-file-count');
 const chartBars        = $('chart-bars');
+const perfChartWrap    = $('perf-chart-wrap');
+const analyticsSection = $('analytics');
 
 const tunnelBadge      = $('tunnel-badge');
 const tunnelStatus     = $('tunnel-status');
 const publicUrlBar     = $('public-url-bar');
 const publicBaseUrl    = $('public-base-url');
 const copyBaseUrlBtn   = $('copy-base-url');
+const cursorGlowEl     = $('cursor-glow');
+const uploadValidation = $('upload-validation');
+const sysAi            = $('sys-ai');
+const sysTunnel        = $('sys-tunnel');
+const sysRuntime       = $('sys-runtime');
+const errorDetailsWrap = $('error-details-wrap');
+const errorDetailsText = $('error-details');
+const copyErrorBtn     = $('copy-error-btn');
+const emptyDeployBtn   = $('empty-deploy-btn');
+const toastStack       = $('toast-stack');
+
+const MAX_UPLOAD_FILES = 60000;
+const MAX_ARCHIVE_BYTES = 500 * 1024 * 1024;
 
 // STATE
 let selectedFiles = [];
 let selectedArchive = null;    // a single ZIP/RAR file
 let uploadMode = 'folder';
 let tunnelUrl = null;
+let analyticsChartAnimatedOnce = false;
+let analyticsCountersAnimatedOnce = false;
+let analyticsInView = false;
+let analyticsObserver = null;
+let latestAnalyticsSites = [];
 
 // INIT
 document.addEventListener('DOMContentLoaded', async () => {
+  if (typeof window.initLiquidGlassBackground === 'function') {
+    window.initLiquidGlassBackground();
+  }
   await checkStatus();
+  initAnalyticsObserver();
   await loadSites();
   bindEvents();
+  setUploadValidation('Supported: HTML, CSS, JS, assets, ZIP, RAR. Max 60k files.', 'neutral');
+  initCursorGlow();
 });
+
+function initAnalyticsObserver() {
+  if (!analyticsSection || analyticsObserver || !('IntersectionObserver' in window)) return;
+
+  analyticsObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      analyticsInView = true;
+      runAnalyticsAnimationsIfReady();
+      analyticsObserver.unobserve(entry.target);
+    });
+  }, {
+    root: null,
+    threshold: 0.24,
+    rootMargin: '0px 0px -10% 0px',
+  });
+
+  analyticsObserver.observe(analyticsSection);
+}
+
+class CursorGlowController {
+  constructor(element) {
+    this.element = element;
+    this.enabled = false;
+    this.pointerFine = window.matchMedia('(pointer:fine)').matches;
+    this.prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    this.targetX = -9999;
+    this.targetY = -9999;
+    this.currentX = -9999;
+    this.currentY = -9999;
+
+    this.targetScale = 1;
+    this.currentScale = 1;
+
+    this.targetOpacity = 0;
+    this.currentOpacity = 0;
+
+    this.frame = null;
+
+    this.onMove = this.onMove.bind(this);
+    this.onLeave = this.onLeave.bind(this);
+    this.onEnter = this.onEnter.bind(this);
+    this.onOver = this.onOver.bind(this);
+    this.onOut = this.onOut.bind(this);
+    this.tick = this.tick.bind(this);
+  }
+
+  start() {
+    if (!this.element || !this.pointerFine || this.prefersReducedMotion) return;
+    this.enabled = true;
+    window.addEventListener('pointermove', this.onMove, { passive: true });
+    window.addEventListener('pointerleave', this.onLeave, { passive: true });
+    window.addEventListener('pointerenter', this.onEnter, { passive: true });
+    document.addEventListener('pointerover', this.onOver, { passive: true });
+    document.addEventListener('pointerout', this.onOut, { passive: true });
+    this.frame = requestAnimationFrame(this.tick);
+  }
+
+  isInteractiveTarget(node) {
+    if (!(node instanceof Element)) return false;
+    return !!node.closest('button, a, [role="button"], .btn, .sc-btn, input, select, textarea');
+  }
+
+  onMove(event) {
+    this.targetX = event.clientX;
+    this.targetY = event.clientY;
+    this.targetOpacity = 0.34;
+  }
+
+  onEnter() {
+    this.targetOpacity = 0.34;
+  }
+
+  onLeave() {
+    this.targetOpacity = 0;
+  }
+
+  onOver(event) {
+    if (this.isInteractiveTarget(event.target)) {
+      this.targetScale = 1.05;
+      this.targetOpacity = 0.42;
+    }
+  }
+
+  onOut(event) {
+    if (this.isInteractiveTarget(event.target)) {
+      this.targetScale = 1;
+      this.targetOpacity = 0.34;
+    }
+  }
+
+  tick() {
+    if (!this.enabled) return;
+
+    this.currentX += (this.targetX - this.currentX) * 0.14;
+    this.currentY += (this.targetY - this.currentY) * 0.14;
+    this.currentScale += (this.targetScale - this.currentScale) * 0.1;
+    this.currentOpacity += (this.targetOpacity - this.currentOpacity) * 0.14;
+
+    const x = this.currentX - this.element.offsetWidth / 2;
+    const y = this.currentY - this.element.offsetHeight / 2;
+
+    this.element.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${this.currentScale})`;
+    this.element.style.opacity = `${Math.max(0, Math.min(1, this.currentOpacity))}`;
+    if (this.currentOpacity > 0.03) this.element.classList.add('is-visible');
+    else this.element.classList.remove('is-visible');
+
+    this.frame = requestAnimationFrame(this.tick);
+  }
+}
+
+function initCursorGlow() {
+  const glow = new CursorGlowController(cursorGlowEl);
+  glow.start();
+}
 
 // ─── STATUS ───────────────────────────────────────────────────────────────────
 async function checkStatus() {
   try {
     const res = await fetch(`${API}/api/status`);
     const data = await res.json();
+    if (sysAi) {
+      sysAi.textContent = data.aiConfigured ? 'AI Configured' : 'AI Not Configured';
+      sysAi.classList.toggle('is-good', !!data.aiConfigured);
+      sysAi.classList.toggle('is-warn', !data.aiConfigured);
+    }
+
     if (data.tunnel?.active && data.tunnel?.publicUrl) {
       tunnelUrl = data.tunnel.publicUrl;
       tunnelStatus.textContent = 'Public';
       tunnelBadge.querySelector('.pulse-dot').classList.remove('pulse-off');
       tunnelBadge.classList.add('tunnel-active');
+      if (sysTunnel) {
+        sysTunnel.textContent = 'Tunnel Public';
+        sysTunnel.classList.add('is-good');
+        sysTunnel.classList.remove('is-neutral', 'is-warn');
+      }
       publicBaseUrl.textContent = tunnelUrl;
       publicBaseUrl.href = tunnelUrl;
       publicUrlBar.style.display = 'flex';
     } else {
       tunnelStatus.textContent = 'Local Only';
       tunnelBadge.querySelector('.pulse-dot').classList.add('pulse-off');
+      if (sysTunnel) {
+        sysTunnel.textContent = 'Tunnel Local Only';
+        sysTunnel.classList.add('is-neutral');
+        sysTunnel.classList.remove('is-good', 'is-warn');
+      }
       publicUrlBar.style.display = 'none';
       setTimeout(checkStatus, 5000);
     }
+
+    if (sysRuntime) {
+      sysRuntime.textContent = 'Runtime On-Demand';
+      sysRuntime.classList.add('is-neutral');
+      sysRuntime.classList.remove('is-good', 'is-warn');
+    }
   } catch {
     tunnelStatus.textContent = 'Offline';
+    if (sysTunnel) {
+      sysTunnel.textContent = 'Tunnel Offline';
+      sysTunnel.classList.add('is-warn');
+      sysTunnel.classList.remove('is-good', 'is-neutral');
+    }
     setTimeout(checkStatus, 5000);
   }
 }
@@ -106,6 +275,7 @@ function bindEvents() {
     toggleFiles.classList.remove('active');
     dropTitle.textContent = 'Drop folder here or click to browse';
     browseBtn.textContent = 'Select Folder';
+    setUploadValidation('Supported: HTML, CSS, JS, assets, ZIP, RAR. Max 60k files.', 'neutral');
     clearAllFiles();
   });
   toggleFiles.addEventListener('click', () => {
@@ -114,6 +284,7 @@ function bindEvents() {
     toggleFolder.classList.remove('active');
     dropTitle.textContent = 'Drop ZIP / RAR / files here';
     browseBtn.textContent = 'Select Files';
+    setUploadValidation('Supported: files, ZIP/RAR archive (max 500MB).', 'neutral');
     clearAllFiles();
   });
 
@@ -125,6 +296,13 @@ function bindEvents() {
   dropZone.addEventListener('click', () => {
     if (uploadMode === 'folder') folderInput.click();
     else fileInput.click();
+  });
+  dropZone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (uploadMode === 'folder') folderInput.click();
+      else fileInput.click();
+    }
   });
 
   folderInput.addEventListener('change', () => {
@@ -158,16 +336,27 @@ function bindEvents() {
   copyUrlBtn.addEventListener('click', copyUrl);
   deployAnotherBtn.addEventListener('click', resetAll);
   tryAgainBtn.addEventListener('click', resetAll);
+  copyErrorBtn?.addEventListener('click', copyErrorDetails);
   refreshSitesBtn.addEventListener('click', loadSites);
+  emptyDeployBtn?.addEventListener('click', () => {
+    document.querySelector('#deploy')?.scrollIntoView({ behavior: 'smooth' });
+  });
 
   copyBaseUrlBtn.addEventListener('click', async () => {
+    if (!tunnelUrl) {
+      toast('Public tunnel is not active', 'error');
+      return;
+    }
     try {
       await navigator.clipboard.writeText(tunnelUrl);
       copyBaseUrlBtn.innerHTML = '✓';
+      toast('Public URL copied', 'success');
       setTimeout(() => {
         copyBaseUrlBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/></svg>`;
       }, 1500);
-    } catch {}
+    } catch {
+      toast('Could not copy public URL', 'error');
+    }
   });
 
   document.querySelectorAll('.nav-pill').forEach((pill) => {
@@ -218,6 +407,13 @@ async function readEntriesRecursive(entries) {
 function handleSelectedFiles(files) {
   if (!files.length) return;
 
+  const validation = validateSelection(files);
+  if (!validation.ok) {
+    setUploadValidation(validation.message, 'error');
+    toast(validation.message, 'error');
+    return;
+  }
+
   // Check if it's a single archive file (ZIP/RAR)
   if (files.length === 1) {
     const name = files[0].name.toLowerCase();
@@ -238,6 +434,7 @@ function handleSelectedFiles(files) {
   applyPathCollisionGuard(selectedFiles);
 
   if (!selectedFiles.length) { dropTitle.textContent = 'No valid files found'; return; }
+  setUploadValidation(`${selectedFiles.length.toLocaleString()} files ready to deploy`, 'success');
 
   // Show file tree
   fileTreeArea.classList.remove('hidden');
@@ -272,6 +469,7 @@ function handleSelectedFiles(files) {
 function handleArchiveFile(file) {
   selectedArchive = file;
   selectedFiles = [];
+  setUploadValidation(`Archive ready: ${file.name} (${fmtBytes(file.size)})`, 'success');
 
   fileTreeArea.classList.remove('hidden');
   dropZone.style.display = 'none';
@@ -434,6 +632,34 @@ function clearAllFiles() {
   dropTitle.textContent = uploadMode === 'folder'
     ? 'Drop folder here or click to browse'
     : 'Drop ZIP / RAR / files here';
+  setUploadValidation(uploadMode === 'folder'
+    ? 'Supported: HTML, CSS, JS, assets, ZIP, RAR. Max 60k files.'
+    : 'Supported: files, ZIP/RAR archive (max 500MB).', 'neutral');
+}
+
+function validateSelection(files) {
+  if (!files?.length) return { ok: false, message: 'No files selected' };
+  if (files.length > MAX_UPLOAD_FILES) {
+    return { ok: false, message: `Too many files (${files.length.toLocaleString()}). Maximum is ${MAX_UPLOAD_FILES.toLocaleString()}.` };
+  }
+
+  if (files.length === 1) {
+    const item = files[0];
+    const lower = String(item.name || '').toLowerCase();
+    if ((lower.endsWith('.zip') || lower.endsWith('.rar')) && item.size > MAX_ARCHIVE_BYTES) {
+      return { ok: false, message: `Archive is ${fmtBytes(item.size)}. Maximum allowed is 500MB.` };
+    }
+  }
+
+  return { ok: true, message: '' };
+}
+
+function setUploadValidation(message, state = 'neutral') {
+  if (!uploadValidation) return;
+  uploadValidation.textContent = message;
+  uploadValidation.classList.remove('is-success', 'is-error');
+  if (state === 'success') uploadValidation.classList.add('is-success');
+  if (state === 'error') uploadValidation.classList.add('is-error');
 }
 
 // Read the main file value whether it's from the select or the custom text input
@@ -452,14 +678,14 @@ async function handleDeployUrl() {
   if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
   siteUrlInput.value = url;
 
-  showLoading('Fetching site...', 'Connecting to URL');
+  showLoading('Uploading request...', 'Connecting to URL');
   stepActive('ls-fetch');
 
   try {
     await delay(300);
     stepDone('ls-fetch'); stepActive('ls-ai');
-    loadingTitle.textContent = 'AI Optimizing...';
-    loadingSub.textContent = 'Analyzing performance';
+    loadingTitle.textContent = 'Extracting content...';
+    loadingSub.textContent = 'Mirroring assets';
 
     const res = await fetch(`${API}/api/deploy/url`, {
       method: 'POST',
@@ -468,20 +694,23 @@ async function handleDeployUrl() {
     });
 
     stepDone('ls-ai'); stepActive('ls-store');
-    loadingTitle.textContent = 'Storing site...';
+    loadingTitle.textContent = 'Optimizing site...';
+    loadingSub.textContent = 'Applying AI improvements';
     await delay(200);
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Deploy failed');
+    const data = await getJsonSafe(res);
+    if (!res.ok) throw makeDeployError(data, 'Deploy failed');
 
     stepDone('ls-store'); stepActive('ls-url');
+    loadingTitle.textContent = 'Hosting...';
+    loadingSub.textContent = 'Generating live URL';
     await delay(300);
     stepDone('ls-url');
 
     showSuccess(data);
     await loadSites();
   } catch (err) {
-    showError(err.message);
+    showError(err.userMessage || err.message || 'Deploy failed', err.details || '');
   }
 }
 
@@ -520,17 +749,26 @@ async function handleDeployArchive(archiveFile) {
     });
 
     stepDone('ls-fetch'); stepActive('ls-ai');
-    loadingTitle.textContent = 'Extracting & optimizing...';
-    loadingSub.textContent = 'Processing archive';
+    loadingTitle.textContent = 'Extracting project...';
+    loadingSub.textContent = 'Unpacking archive';
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Deploy failed');
+    const data = await getJsonSafe(res);
+    if (!res.ok) throw makeDeployError(data, 'Deploy failed');
 
-    stepDone('ls-ai'); stepDone('ls-store'); stepDone('ls-url');
+    stepDone('ls-ai'); stepActive('ls-store');
+    loadingTitle.textContent = 'Optimizing site...';
+    loadingSub.textContent = 'Preparing hosted build';
+    await delay(220);
+    stepDone('ls-store');
+    stepActive('ls-url');
+    loadingTitle.textContent = 'Hosting...';
+    loadingSub.textContent = 'Publishing URL';
+    await delay(220);
+    stepDone('ls-url');
     showSuccess(data);
     await loadSites();
   } catch (err) {
-    showError(err.message);
+    showError(err.userMessage || err.message || 'Deploy failed', err.details || '');
   }
 }
 
@@ -582,6 +820,8 @@ async function handleDeployLargeFolder() {
     if (backendFile) formData.append('backendFile', backendFile);
 
     stepDone('ls-fetch'); stepActive('ls-ai');
+    loadingTitle.textContent = 'Extracting project...';
+    loadingSub.textContent = 'Uploading compressed bundle';
 
     const res = await fetch(`${API}/api/deploy/archive`, {
       method: 'POST',
@@ -589,16 +829,21 @@ async function handleDeployLargeFolder() {
     });
 
     stepDone('ls-ai'); stepActive('ls-store');
-    loadingTitle.textContent = 'Processing...';
+    loadingTitle.textContent = 'Optimizing site...';
+    loadingSub.textContent = 'Analyzing build output';
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Deploy failed');
+    const data = await getJsonSafe(res);
+    if (!res.ok) throw makeDeployError(data, 'Deploy failed');
 
-    stepDone('ls-store'); stepDone('ls-url');
+    stepDone('ls-store'); stepActive('ls-url');
+    loadingTitle.textContent = 'Hosting...';
+    loadingSub.textContent = 'Finalizing public URL';
+    await delay(220);
+    stepDone('ls-url');
     showSuccess(data);
     await loadSites();
   } catch (err) {
-    showError(err.message);
+    showError(err.userMessage || err.message || 'Deploy failed', err.details || '');
   }
 }
 
@@ -624,7 +869,8 @@ async function handleDeploySmallFiles() {
 
     await delay(300);
     stepDone('ls-fetch'); stepActive('ls-ai');
-    loadingTitle.textContent = 'AI Optimizing...';
+    loadingTitle.textContent = 'Extracting project...';
+    loadingSub.textContent = 'Reading uploaded files';
 
     const res = await fetch(`${API}/api/deploy/files`, {
       method: 'POST',
@@ -632,14 +878,20 @@ async function handleDeploySmallFiles() {
     });
 
     stepDone('ls-ai'); stepActive('ls-store');
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Deploy failed');
+    loadingTitle.textContent = 'Optimizing site...';
+    loadingSub.textContent = 'Applying AI changes';
+    const data = await getJsonSafe(res);
+    if (!res.ok) throw makeDeployError(data, 'Deploy failed');
 
-    stepDone('ls-store'); stepDone('ls-url');
+    stepDone('ls-store'); stepActive('ls-url');
+    loadingTitle.textContent = 'Hosting...';
+    loadingSub.textContent = 'Publishing live URL';
+    await delay(220);
+    stepDone('ls-url');
     showSuccess(data);
     await loadSites();
   } catch (err) {
-    showError(err.message);
+    showError(err.userMessage || err.message || 'Deploy failed', err.details || '');
   }
 }
 
@@ -704,15 +956,28 @@ function showSuccess(data) {
   successCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   deployUrlBtn.disabled = false;
   deployFilesBtn.disabled = selectedFiles.length === 0 && !selectedArchive;
+  toast('Site deployed successfully', 'success');
 }
 
-function showError(msg) {
+function showError(msg, details = '') {
   hideAll();
   errorMsg.textContent = msg;
+  if (errorDetailsWrap && errorDetailsText) {
+    if (details) {
+      errorDetailsWrap.hidden = false;
+      errorDetailsText.textContent = details;
+      errorDetailsWrap.open = false;
+    } else {
+      errorDetailsWrap.hidden = true;
+      errorDetailsText.textContent = '';
+      errorDetailsWrap.open = false;
+    }
+  }
   errorCard.classList.remove('hidden');
   errorCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   deployUrlBtn.disabled = false;
   deployFilesBtn.disabled = selectedFiles.length === 0 && !selectedArchive;
+  toast(msg, 'error');
 }
 
 function hideAll() {
@@ -752,7 +1017,19 @@ async function copyUrl() {
       copyUrlBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/></svg>`;
       copyUrlBtn.style.color = '';
     }, 1800);
+    toast('URL copied to clipboard', 'success');
   } catch {}
+}
+
+async function copyErrorDetails() {
+  const text = [errorMsg?.textContent || '', errorDetailsText?.textContent || ''].filter(Boolean).join('\n\n');
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('Error details copied', 'success');
+  } catch {
+    toast('Could not copy details', 'error');
+  }
 }
 
 // ─── SITES ────────────────────────────────────────────────────────────────────
@@ -776,18 +1053,24 @@ function renderSites(sites) {
     card.className = 'site-card glass';
     card.style.animation = `fadeUp 0.4s ease ${i * 0.07}s both`;
 
-    const mode = site.deployMode === 'url' ? 'URL' : `${(site.fileCount || 0).toLocaleString()} files`;
+    const mode = site.deployMode === 'url' ? 'URL deploy' : 'Files deploy';
+    const fileCountText = `${(site.fileCount || 0).toLocaleString()} files`;
     const name = site.originalUrl
       ? new URL(site.originalUrl).hostname
       : (site.mainFile || site.siteId);
-    const date = new Date(site.createdAt).toLocaleString();
+    const date = formatDate(site.createdAt);
+    const faviconUrl = `${site.publicUrl.replace(/\/$/, '')}/favicon.ico`;
 
     card.innerHTML = `
       <div class="sc-top">
-        <div class="sc-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" stroke="currentColor" stroke-width="2"/></svg></div>
+        <div class="sc-preview">
+          <img src="${esc(faviconUrl)}" alt="" loading="lazy" class="sc-thumb" />
+          <span class="sc-thumb-fallback">${esc(name.charAt(0).toUpperCase())}</span>
+        </div>
         <div>
           <div class="sc-name">${esc(name)}</div>
           <div class="sc-meta">${mode} · ${date}</div>
+          <div class="sc-meta">${fileCountText}</div>
         </div>
         <div class="sc-score">${site.score || '--'}<span>/ 100</span></div>
       </div>
@@ -797,6 +1080,10 @@ function renderSites(sites) {
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" stroke="currentColor" stroke-width="2"/><polyline points="15 3 21 3 21 9" stroke="currentColor" stroke-width="2"/><line x1="10" y1="14" x2="21" y2="3" stroke="currentColor" stroke-width="2"/></svg>
           Visit
         </a>
+        <button class="sc-btn sc-btn-copy" data-url="${esc(site.publicUrl)}">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/></svg>
+          Copy
+        </button>
         <button class="sc-btn sc-btn-delete" data-id="${site.siteId}">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" stroke="currentColor" stroke-width="2"/></svg>
           Delete
@@ -804,10 +1091,25 @@ function renderSites(sites) {
       </div>
     `;
 
+    const thumbImg = card.querySelector('.sc-thumb');
+    thumbImg?.addEventListener('error', () => {
+      thumbImg.style.display = 'none';
+    });
+
+    card.querySelector('.sc-btn-copy')?.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(site.publicUrl);
+        toast('Site URL copied', 'success');
+      } catch {
+        toast('Could not copy URL', 'error');
+      }
+    });
+
     card.querySelector('.sc-btn-delete').addEventListener('click', async () => {
       if (!confirm('Delete this site?')) return;
       await fetch(`${API}/api/sites/${site.siteId}`, { method: 'DELETE' });
       card.remove();
+      toast('Site deleted', 'success');
       loadSites();
     });
 
@@ -816,27 +1118,125 @@ function renderSites(sites) {
 }
 
 function renderAnalytics(sites) {
-  anTotal.textContent = sites.length;
-  anUrlCount.textContent = sites.filter((s) => s.deployMode === 'url').length;
-  anFileCount.textContent = sites.filter((s) => s.deployMode !== 'url').length;
+  latestAnalyticsSites = Array.isArray(sites) ? sites : [];
+
+  const totalCount = sites.length;
+  const urlCount = sites.filter((s) => s.deployMode === 'url').length;
+  const fileCount = sites.filter((s) => s.deployMode !== 'url').length;
   const scores = sites.map((s) => s.score).filter(Boolean);
-  anAvgScore.textContent = scores.length ? Math.round(scores.reduce((a, b) => a + b) / scores.length) : '--';
+
+  if (!analyticsCountersAnimatedOnce && !analyticsInView) {
+    anTotal.textContent = '0';
+    anUrlCount.textContent = '0';
+    anFileCount.textContent = '0';
+    anAvgScore.textContent = scores.length ? '0' : '--';
+  } else {
+    anTotal.textContent = String(totalCount);
+    anUrlCount.textContent = String(urlCount);
+    anFileCount.textContent = String(fileCount);
+    anAvgScore.textContent = scores.length
+      ? String(Math.round(scores.reduce((a, b) => a + b) / scores.length))
+      : '--';
+  }
 
   chartBars.innerHTML = '';
   if (!sites.length) { chartBars.innerHTML = '<p class="chart-empty">Deploy sites to see scores</p>'; return; }
+
+  const shouldAnimateOnView = !analyticsChartAnimatedOnce;
   sites.slice(0, 12).forEach((site) => {
     const name = site.originalUrl
       ? new URL(site.originalUrl).hostname.replace('www.', '')
       : (site.mainFile || site.siteId).substring(0, 10);
+    const targetHeight = Math.max(4, site.score || 0);
     const wrap = document.createElement('div');
     wrap.className = 'chart-bar-wrap';
     wrap.innerHTML = `
       <div class="chart-bar-val">${site.score || 0}</div>
-      <div class="chart-bar" style="height:${Math.max(4, site.score || 0)}px"></div>
+      <div class="chart-bar" data-target-height="${targetHeight}" style="height:${shouldAnimateOnView ? 0 : targetHeight}px"></div>
       <div class="chart-bar-label">${esc(name)}</div>
     `;
     chartBars.appendChild(wrap);
   });
+
+  if (analyticsChartAnimatedOnce) {
+    chartBars.querySelectorAll('.chart-bar').forEach((bar) => {
+      bar.style.setProperty('--bar-delay', '0ms');
+    });
+  } else {
+    chartBars.querySelectorAll('.chart-bar').forEach((bar, index) => {
+      bar.style.setProperty('--bar-delay', `${index * 55}ms`);
+    });
+  }
+
+  initAnalyticsObserver();
+  runAnalyticsAnimationsIfReady();
+}
+
+function runAnalyticsAnimationsIfReady() {
+  if (!analyticsInView) return;
+
+  if (!analyticsCountersAnimatedOnce) {
+    const sites = latestAnalyticsSites;
+    const totalCount = sites.length;
+    const urlCount = sites.filter((s) => s.deployMode === 'url').length;
+    const fileCount = sites.filter((s) => s.deployMode !== 'url').length;
+    const scores = sites.map((s) => s.score).filter(Boolean);
+
+    animateCounter(anTotal, totalCount, { duration: 1200 });
+    animateCounter(anUrlCount, urlCount, { duration: 1200 });
+    animateCounter(anFileCount, fileCount, { duration: 1200 });
+
+    if (scores.length) {
+      const avgScore = Math.round(scores.reduce((a, b) => a + b) / scores.length);
+      animateCounter(anAvgScore, avgScore, { duration: 1300 });
+    } else {
+      anAvgScore.textContent = '--';
+    }
+
+    analyticsCountersAnimatedOnce = true;
+  }
+
+  if (!analyticsChartAnimatedOnce) {
+    animateChartBarsIn();
+    analyticsChartAnimatedOnce = true;
+  }
+}
+
+function animateChartBarsIn() {
+  const bars = chartBars?.querySelectorAll('.chart-bar');
+  if (!bars?.length) return;
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      bars.forEach((bar) => {
+        const target = Number(bar.dataset.targetHeight || 0);
+        bar.style.height = `${Math.max(0, target)}px`;
+      });
+    });
+  });
+}
+
+function animateCounter(element, finalValue, options = {}) {
+  if (!element || !Number.isFinite(finalValue)) return;
+
+  const duration = Number(options.duration || 1200);
+  const target = Math.max(0, Math.round(finalValue));
+  const start = 0;
+  const startTime = performance.now();
+
+  function step(timestamp) {
+    const elapsed = timestamp - startTime;
+    const progress = Math.min(1, elapsed / duration);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const value = Math.round(start + (target - start) * eased);
+    element.textContent = value;
+
+    if (progress < 1) {
+      requestAnimationFrame(step);
+    }
+  }
+
+  requestAnimationFrame(step);
 }
 
 // ─── UTILS ────────────────────────────────────────────────────────────────────
@@ -861,6 +1261,43 @@ function getFileIcon(ext) {
     zip: '📦', rar: '📦', woff: '🔤', woff2: '🔤', ttf: '🔤',
   };
   return icons[ext] || '📄';
+}
+
+function formatDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Unknown date';
+  return date.toLocaleString();
+}
+
+function toast(message, type = 'neutral') {
+  if (!toastStack || !message) return;
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = message;
+  toastStack.appendChild(el);
+  setTimeout(() => {
+    el.classList.add('toast-hide');
+    setTimeout(() => el.remove(), 220);
+  }, 2600);
+}
+
+async function getJsonSafe(res) {
+  try {
+    return await res.json();
+  } catch {
+    return {};
+  }
+}
+
+function makeDeployError(payload, fallbackMessage) {
+  const detailText = typeof payload?.details === 'string'
+    ? payload.details
+    : (payload?.stack || payload?.reason || '');
+  const userMessage = payload?.error || fallbackMessage;
+  const err = new Error(userMessage);
+  err.userMessage = userMessage;
+  err.details = detailText;
+  return err;
 }
 
 const shakeStyle = document.createElement('style');

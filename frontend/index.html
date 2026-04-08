@@ -5,12 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>HostAI — AI-Powered Web Hosting</title>
   <meta name="description" content="Deploy any website in seconds with AI-powered optimization. Free, fast, and smart." />
+  <link rel="icon" href="/favicon.ico" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
+  <div id="liquid-glass-bg" class="liquid-glass-bg" aria-hidden="true"></div>
 
   <!-- BG Orbs -->
   <div class="bg-orbs" aria-hidden="true">
@@ -61,6 +64,12 @@
         <div class="stat"><span class="stat-num">100%</span><span class="stat-label">Free Forever</span></div>
         <div class="stat-divider"></div>
         <div class="stat"><span class="stat-num">&lt;5s</span><span class="stat-label">Deploy Time</span></div>
+      </div>
+
+      <div class="system-strip glass" id="system-strip" aria-live="polite">
+        <div class="sys-chip" id="sys-ai">AI: checking…</div>
+        <div class="sys-chip" id="sys-tunnel">Tunnel: checking…</div>
+        <div class="sys-chip" id="sys-runtime">Runtime: on-demand</div>
       </div>
     </div>
   </section>
@@ -135,8 +144,9 @@
                   <svg width="36" height="36" viewBox="0 0 24 24" fill="none"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="18" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><polyline points="9 15 12 12 15 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                 </div>
                 <p class="drop-title" id="drop-title">Drop folder here or click to browse</p>
-                <p class="drop-sub">Entire project folder · ZIP / RAR archive · Individual files</p>
+                <p class="drop-sub">Entire project folder · ZIP / RAR archive · Individual files · up to 500MB archive</p>
                 <button class="btn btn-ghost" id="browse-btn" type="button">Select Folder</button>
+                <p class="validation-hint" id="upload-validation" aria-live="polite">Supported: HTML, CSS, JS, assets, ZIP, RAR. Max 60k files.</p>
               </div>
               <!-- Folder input -->
               <input type="file" id="folder-input" webkitdirectory directory multiple hidden />
@@ -197,10 +207,10 @@
             <p class="loading-sub" id="loading-sub">Preparing your files</p>
           </div>
           <div class="loading-steps">
-            <div class="ls" id="ls-fetch"><span class="ls-dot pending"></span>Upload</div>
-            <div class="ls" id="ls-ai"><span class="ls-dot"></span>AI Optimize</div>
-            <div class="ls" id="ls-store"><span class="ls-dot"></span>Store</div>
-            <div class="ls" id="ls-url"><span class="ls-dot"></span>Public URL</div>
+            <div class="ls" id="ls-fetch"><span class="ls-dot pending"></span>Uploading</div>
+            <div class="ls" id="ls-ai"><span class="ls-dot"></span>Extracting</div>
+            <div class="ls" id="ls-store"><span class="ls-dot"></span>Optimizing</div>
+            <div class="ls" id="ls-url"><span class="ls-dot"></span>Hosting</div>
           </div>
         </div>
 
@@ -256,8 +266,15 @@
           <div>
             <p class="error-title">Deployment Failed</p>
             <p class="error-msg" id="error-msg">An unexpected error occurred.</p>
+            <details class="error-details" id="error-details-wrap">
+              <summary>Technical details</summary>
+              <p id="error-details"></p>
+            </details>
           </div>
-          <button class="btn btn-ghost" id="try-again-btn">Try Again</button>
+          <div class="error-actions">
+            <button class="btn btn-ghost" id="try-again-btn">Try Again</button>
+            <button class="btn btn-ghost" id="copy-error-btn" type="button">Copy Error</button>
+          </div>
         </div>
       </div>
     </div>
@@ -281,6 +298,7 @@
           </div>
           <p class="empty-title">No sites yet</p>
           <p class="empty-sub">Deploy your first site above</p>
+          <button class="btn btn-primary btn-sm" id="empty-deploy-btn" type="button">Deploy First Site</button>
         </div>
       </div>
     </div>
@@ -333,6 +351,11 @@
     </div>
   </footer>
 
+  <div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="false"></div>
+  <div class="cursor-glow" id="cursor-glow" aria-hidden="true"></div>
+
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+  <script src="liquid-glass.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
