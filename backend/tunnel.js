@@ -3,10 +3,12 @@
  * Priority: Cloudflare quick tunnel (cloudflared) -> Pinggy SSH fallback.
  */
 import { spawn } from 'child_process';
+import localtunnel from 'localtunnel';
 
 let tunnelProcess = null;
 let publicUrl = null;
 let activeProvider = null;
+let localTunnelInstance = null;
 
 function setPublicUrl(url, provider) {
   publicUrl = url?.replace('http://', 'https://') || null;
@@ -100,6 +102,10 @@ export async function startTunnel(port) {
     try { tunnelProcess.kill(); } catch {}
     tunnelProcess = null;
   }
+  if (localTunnelInstance) {
+    try { await localTunnelInstance.close(); } catch {}
+    localTunnelInstance = null;
+  }
   setPublicUrl(null, null);
 
   const cloudflareUrl = await startCloudflareTunnel(port);
@@ -114,7 +120,27 @@ export async function startTunnel(port) {
     return pinggyUrl;
   }
 
-  console.log('❌ Tunnel failed: cloudflared and pinggy unavailable.');
+  try {
+    console.log('🌐 Starting public tunnel (LocalTunnel fallback)...');
+    localTunnelInstance = await localtunnel({ port });
+    if (localTunnelInstance?.url) {
+      setPublicUrl(localTunnelInstance.url, 'localtunnel');
+      localTunnelInstance.on?.('close', () => {
+        console.log('⚠️  LocalTunnel closed. Restarting...');
+        localTunnelInstance = null;
+        setPublicUrl(null, null);
+        setTimeout(() => {
+          startTunnel(port).catch(() => {});
+        }, 3000);
+      });
+      console.log(`🌍 PUBLIC URL: ${publicUrl}`);
+      return publicUrl;
+    }
+  } catch {
+    localTunnelInstance = null;
+  }
+
+  console.log('❌ Tunnel failed: cloudflared, pinggy, and localtunnel unavailable.');
   console.log('   Sites will be available on localhost only.\n');
   return null;
 }
