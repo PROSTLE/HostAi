@@ -1,0 +1,29 @@
+{
+  "name": "hostai",
+  "version": "1.0.0",
+  "description": "AI-powered web hosting platform built with Claude AI",
+  "main": "backend/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node --watch backend/server.js"
+  },
+  "keywords": [
+    "hosting",
+    "ai",
+    "claude",
+    "cloudflare"
+  ],
+  "author": "HostAI",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "localtunnel": "^2.0.2",
+    "multer": "^2.1.1",
+    "node-fetch": "^3.3.2",
+    "node-unrar-js": "^2.0.2",
+    "unzipper": "^0.12.3"
+  }
+}

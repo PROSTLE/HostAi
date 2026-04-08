@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HostAI — AI-Powered Web Hosting</title>
+  <meta name="description" content="Deploy any website in seconds with AI-powered optimization. Free, fast, and smart." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- BG Orbs -->
+  <div class="bg-orbs" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="container header-inner">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <span class="logo-text">Host<span class="logo-accent">AI</span></span>
+      </div>
+      <nav class="nav-pills">
+        <a href="#deploy" class="nav-pill active">Deploy</a>
+        <a href="#sites" class="nav-pill" id="nav-sites">My Sites</a>
+        <a href="#analytics" class="nav-pill" id="nav-analytics">Analytics</a>
+      </nav>
+      <div class="tunnel-badge" id="tunnel-badge">
+        <span class="pulse-dot pulse-off"></span>
+        <span id="tunnel-status">Connecting...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="container hero-inner">
+      <h1 class="hero-title">Deploy Any Website<br /><span class="gradient-text">in Seconds</span></h1>
+      <p class="hero-sub">Paste a URL or drop your project folder. Get a live public HTTPS link — no account, no cost.</p>
+      
+      <!-- Public URL display -->
+      <div class="public-url-bar glass" id="public-url-bar" style="display:none;">
+        <span class="pub-label">Your Public Domain</span>
+        <a href="#" id="public-base-url" class="pub-url" target="_blank" rel="noopener"></a>
+        <button class="copy-btn-sm" id="copy-base-url" title="Copy">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+      </div>
+
+      <div class="hero-stats">
+        <div class="stat"><span class="stat-num" id="total-sites-count">0</span><span class="stat-label">Sites Hosted</span></div>
+        <div class="stat-divider"></div>
+        <div class="stat"><span class="stat-num">100%</span><span class="stat-label">Free Forever</span></div>
+        <div class="stat-divider"></div>
+        <div class="stat"><span class="stat-num">&lt;5s</span><span class="stat-label">Deploy Time</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DEPLOY -->
+  <main id="deploy" class="deploy-section">
+    <div class="container">
+      <div class="deploy-grid">
+
+        <!-- URL Panel -->
+        <div class="panel glass" id="url-panel">
+          <div class="panel-header">
+            <div class="panel-icon url-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div>
+              <h2 class="panel-title">Deploy from URL</h2>
+              <p class="panel-sub">Mirror & optimize any public website</p>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="input-group">
+              <label for="site-url" class="input-label">Website URL</label>
+              <div class="input-wrapper">
+                <span class="input-prefix">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" stroke="currentColor" stroke-width="2"/></svg>
+                </span>
+                <input type="url" id="site-url" class="text-input" placeholder="https://example.com" autocomplete="off" />
+              </div>
+            </div>
+            <button class="btn btn-primary" id="deploy-url-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Deploy
+            </button>
+          </div>
+        </div>
+
+        <!-- Divider -->
+        <div class="deploy-divider">
+          <div class="divider-line"></div>
+          <span class="divider-label">OR</span>
+          <div class="divider-line"></div>
+        </div>
+
+        <!-- File/Folder Upload Panel -->
+        <div class="panel glass" id="file-panel">
+          <div class="panel-header">
+            <div class="panel-icon file-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div>
+              <h2 class="panel-title">Upload Project</h2>
+              <p class="panel-sub">Folder, files, ZIP or RAR archive</p>
+            </div>
+          </div>
+          <div class="panel-body">
+            <!-- Upload mode toggle -->
+            <div class="upload-toggle">
+              <button class="toggle-btn active" id="toggle-folder" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" stroke="currentColor" stroke-width="2"/></svg>
+                Folder
+              </button>
+              <button class="toggle-btn" id="toggle-files" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" stroke-width="2"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2"/></svg>
+                Files / ZIP / RAR
+              </button>
+            </div>
+
+            <div class="drop-zone" id="drop-zone" tabindex="0">
+              <div class="drop-zone-inner" id="drop-zone-inner">
+                <div class="drop-icon">
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="18" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><polyline points="9 15 12 12 15 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </div>
+                <p class="drop-title" id="drop-title">Drop folder here or click to browse</p>
+                <p class="drop-sub">Entire project folder · ZIP / RAR archive · Individual files</p>
+                <button class="btn btn-ghost" id="browse-btn" type="button">Select Folder</button>
+              </div>
+              <!-- Folder input -->
+              <input type="file" id="folder-input" webkitdirectory directory multiple hidden />
+              <!-- File/ZIP input -->
+              <input type="file" id="file-input" multiple accept=".html,.htm,.css,.js,.json,.zip,.rar,.png,.jpg,.jpeg,.gif,.svg,.webp,.ico,.woff,.woff2,.ttf,.ts,.jsx,.tsx,.md,.txt,.xml,.pdf,.mp4,.webm" hidden />
+            </div>
+
+            <!-- File tree after selection -->
+            <div id="file-tree-area" class="file-tree-area hidden">
+              <div class="ft-header">
+                <span class="ft-count" id="ft-count">0 files</span>
+                <button class="btn btn-ghost btn-xs" id="clear-files-btn">Clear</button>
+              </div>
+              <div class="file-tree" id="file-tree"></div>
+
+              <!-- Main file picker -->
+              <div class="file-picker">
+                <div class="picker-row">
+                  <label for="main-file-select" class="picker-label">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" stroke-width="2"/></svg>
+                    Main File
+                  </label>
+                  <select id="main-file-select" class="picker-select"></select>
+                </div>
+                <div class="picker-row">
+                  <label for="backend-file-select" class="picker-label">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" stroke="currentColor" stroke-width="2"/><line x1="8" y1="21" x2="16" y2="21" stroke="currentColor" stroke-width="2"/><line x1="12" y1="17" x2="12" y2="21" stroke="currentColor" stroke-width="2"/></svg>
+                    Backend File <span class="optional">(optional)</span>
+                  </label>
+                  <select id="backend-file-select" class="picker-select">
+                    <option value="">None</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" id="deploy-files-btn" disabled>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Deploy Project
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Result Cards -->
+      <div class="result-area" id="result-area" aria-live="polite">
+        <!-- Loading -->
+        <div class="result-card glass loading-card hidden" id="loading-card">
+          <div class="loading-orbit">
+            <div class="loading-ring"></div>
+            <div class="loading-inner">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+          <div>
+            <p class="loading-title" id="loading-title">Uploading project...</p>
+            <p class="loading-sub" id="loading-sub">Preparing your files</p>
+          </div>
+          <div class="loading-steps">
+            <div class="ls" id="ls-fetch"><span class="ls-dot pending"></span>Upload</div>
+            <div class="ls" id="ls-ai"><span class="ls-dot"></span>AI Optimize</div>
+            <div class="ls" id="ls-store"><span class="ls-dot"></span>Store</div>
+            <div class="ls" id="ls-url"><span class="ls-dot"></span>Public URL</div>
+          </div>
+        </div>
+
+        <!-- Success -->
+        <div class="result-card glass success-card hidden" id="success-card">
+          <div class="success-header">
+            <div class="success-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M22 11.08V12a10 10 0 11-5.93-9.14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="22 4 12 14.01 9 11.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div>
+              <h3 class="success-title">Site Deployed! 🚀</h3>
+              <p class="success-sub" id="success-sub">AI optimization complete</p>
+            </div>
+            <div class="score-badge" id="score-badge">
+              <span class="score-num" id="score-num">--</span>
+              <span class="score-label">/ 100</span>
+            </div>
+          </div>
+
+          <div class="url-display">
+            <div class="url-label">Public Live URL</div>
+            <div class="url-box">
+              <a href="#" id="site-url-link" class="site-url-link" target="_blank" rel="noopener">
+                <span id="site-url-display"></span>
+              </a>
+              <button class="copy-btn" id="copy-url-btn" title="Copy URL">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="improvements-section" id="improvements-section">
+            <p class="imp-label">AI Improvements</p>
+            <div class="imp-list" id="imp-list"></div>
+          </div>
+
+          <div class="ai-report" id="ai-report">
+            <p class="report-label">Performance Report</p>
+            <p class="report-text" id="report-text"></p>
+          </div>
+
+          <div class="success-actions">
+            <a href="#" id="visit-btn" class="btn btn-primary" target="_blank" rel="noopener">Visit Site</a>
+            <button class="btn btn-ghost" id="deploy-another-btn">Deploy Another</button>
+          </div>
+        </div>
+
+        <!-- Error -->
+        <div class="result-card glass error-card hidden" id="error-card">
+          <div class="error-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="16" x2="12.01" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <div>
+            <p class="error-title">Deployment Failed</p>
+            <p class="error-msg" id="error-msg">An unexpected error occurred.</p>
+          </div>
+          <button class="btn btn-ghost" id="try-again-btn">Try Again</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- MY SITES -->
+  <section id="sites" class="sites-section">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">My Sites</h2>
+        <p class="section-sub">All deployed sites — accessible from anywhere</p>
+        <button class="btn btn-ghost btn-sm" id="refresh-sites-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><polyline points="1 4 1 10 7 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Refresh
+        </button>
+      </div>
+      <div class="sites-grid" id="sites-grid">
+        <div class="empty-state" id="sites-empty">
+          <div class="empty-icon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" stroke="currentColor" stroke-width="1.5"/><polyline points="9 22 9 12 15 12 15 22" stroke="currentColor" stroke-width="1.5"/></svg>
+          </div>
+          <p class="empty-title">No sites yet</p>
+          <p class="empty-sub">Deploy your first site above</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ANALYTICS -->
+  <section id="analytics" class="analytics-section">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Analytics</h2>
+        <p class="section-sub">Performance insights</p>
+      </div>
+      <div class="analytics-grid">
+        <div class="analytics-card glass">
+          <p class="ac-label">Total Sites</p>
+          <p class="ac-num" id="an-total">0</p>
+        </div>
+        <div class="analytics-card glass">
+          <p class="ac-label">Avg AI Score</p>
+          <p class="ac-num" id="an-avg-score">--</p>
+        </div>
+        <div class="analytics-card glass">
+          <p class="ac-label">URL Deploys</p>
+          <p class="ac-num" id="an-url-count">0</p>
+        </div>
+        <div class="analytics-card glass">
+          <p class="ac-label">File Deploys</p>
+          <p class="ac-num" id="an-file-count">0</p>
+        </div>
+      </div>
+      <div class="perf-chart-wrap glass" id="perf-chart-wrap">
+        <p class="chart-label">Performance Scores</p>
+        <div class="chart-bars" id="chart-bars">
+          <p class="chart-empty">Deploy sites to see scores here</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="logo">
+        <div class="logo-icon sm">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <span class="logo-text sm">Host<span class="logo-accent">AI</span></span>
+      </div>
+      <p class="footer-copy">&copy; 2026 HostAI. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
